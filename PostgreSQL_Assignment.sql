@@ -60,22 +60,30 @@ SELECT title FROM books WHERE stock < 1;
 -- 2.Find premium priced books
 SELECT id, title, price FROM books ORDER BY price DESC FETCH FIRST ROW ONLY;
 
--- 3.Show customer purchase counts
-SELECT r.full_name, COUNT(t.order_id) AS purchase_count 
+-- 3.Total orders per customer
+SELECT r.user_id,
+       r.full_name,
+       COUNT(t.order_id) AS total_orders
 FROM readers r
-INNER JOIN transactions t ON r.user_id = t.user_id 
-GROUP BY r.full_name;
+LEFT JOIN transactions t
+  ON r.user_id = t.user_id
+GROUP BY r.user_id, r.full_name;
 
--- 4.Calculate total sales
-SELECT SUM(b.price * t.items_ordered) AS earnings
+-- 4.Calculate total revenue
+SELECT SUM(b.price * t.items_ordered) AS total_revenue
 FROM transactions t
-JOIN books b ON t.book_number = b.id;
+JOIN books b
+  ON t.book_number = b.id;
 
--- 5.Identify frequent buyers
-SELECT r.full_name, COUNT(*) AS purchases
+-- 5.List customers with more than one order
+SELECT r.user_id,
+       r.full_name,
+       COUNT(t.order_id) AS order_count
 FROM readers r
-JOIN transactions t ON r.user_id = t.user_id
-GROUP BY r.full_name HAVING COUNT(*) > 1;
+JOIN transactions t
+  ON r.user_id = t.user_id
+GROUP BY r.user_id, r.full_name
+HAVING COUNT(t.order_id) > 1;
 
 -- 6.Compute average book value
 SELECT ROUND(AVG(price), 2) AS average_price FROM books;
@@ -84,9 +92,10 @@ SELECT ROUND(AVG(price), 2) AS average_price FROM books;
 UPDATE books SET price = price * 1.1 
 WHERE published_year < 2000;
 
--- 8.Remove inactive accounts
-DELETE FROM readers 
+-- 8.Delete customers with no orders
+DELETE FROM readers r
 WHERE NOT EXISTS (
-    SELECT 1 FROM transactions 
-    WHERE transactions.user_id = readers.user_id
+    SELECT 1
+    FROM transactions t
+    WHERE t.user_id = r.user_id
 );
